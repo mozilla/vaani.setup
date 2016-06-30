@@ -18,6 +18,7 @@
   "homepage": "https://github.com/davidflanagan/wifi-setup#readme",
   "dependencies": {
     "body-parser": "^1.15.2",
+    "evernote": "^1.25.82",
     "express": "^4.14.0"
   }
 }

@@ -56,14 +56,25 @@ var statusTemplate = getTemplate('./templates/status.hbs');
 // This function handles requests for the root URL '/'.
 // We display a different page depending on what stage of setup we're at
 function handleRoot(request, response) {
+  console.log('handleRoot');
   wifi.getStatus().then(status => {
+    console.log("wifi status", status);
+
     // If we don't have a wifi connection yet, display the wifi setup page
     if (status !== 'COMPLETED') {
+      console.log("redirecting to wifiSetup");
       response.redirect('/wifiSetup');
     }
     else {
       // Otherwise, look to see if we have an oauth token yet
-      var oauthToken = JSON.parse(fs.readFileSync('oauthToken.json', 'utf8'));
+      var oauthToken
+      try {
+        oauthToken = JSON.parse(fs.readFileSync('oauthToken.json', 'utf8'));
+      }
+      catch(e) {
+        oauthToken = null;
+      }
+
       console.log(oauthToken);
       if (!oauthToken || !oauthToken.oauthAccessToken) {
         console.log("oauth setup");
@@ -90,8 +101,21 @@ function handleConnecting(request, response) {
   var ssid = request.body.ssid.trim();
   var password = request.body.password.trim();
   response.send(connectingTemplate({ssid: ssid}));
-  wifi.defineNetwork(ssid, password);
-  wifi.stopAP();
+
+  // XXX: another problem. I think I need to wait a bit after sending the
+  // response to be sure it gets through. Now that I'm calling stopAP first
+  // the network went down before I received the response in my browser.
+
+  // XXX I've got a problem here. This brings up the new network, and
+  // we can connect to the device over local wifi. But the device
+  // still thinks it is 10.0.0.1 instead of using the IP address
+  // assigned by dhcp and somehow that means that it can't get out to
+  // the internet.  (At least when I'm testing from home where
+  // 10.0.0.1 is my router) Rebooting fixes things, but I somehow need
+  // stopAP() to relinquish 10.0.0.1 and get the right address.  XXX
+  // Maybe calling stopAP first before defining the network would
+  // help? No, that doesn't seem to help with the ip address problem
+  wifi.stopAP().then(out => wifi.defineNetwork(ssid, password));
 }
 
 function handleOauthSetup(request, response) {

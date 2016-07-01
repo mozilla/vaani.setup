@@ -1,0 +1,28 @@
+<html>
+  <head>
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1"/>
+    <meta charset="utf-8"/>
+    <title>Vaani Setup</title>
+  </head>
+  <body>
+    <h1>Vaani Setup</h1>
+    <h2>WiFi</h2>
+    {{connectionState}}
+    <form action="addNetwork" method="post">
+      Select your wifi network:<br/>
+      <select name="ssid">
+        {{#networks}}
+        <option value="{{this}}">{{this}}</option>
+        {{/networks}}
+      </select>
+      <br/>
+      Enter your wifi password:<br/> 
+      <input name="password">
+      <br/>
+      <button id="submit">Connect</button>
+    </form>
+
+    <h2>Evernote Authorization</h2>
+  </body>
+</html>

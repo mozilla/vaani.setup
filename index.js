@@ -1,8 +1,12 @@
 var wifi = require('./wifi.js');
 var express = require('express');
 var bodyParser = require('body-parser');
+var fs = require('fs');
+var Handlebars = require('handlebars');
 
 var app = express();
+
+var indexPageTemplate = Handlebars.compile(fs.readFileSync('./index.hbs'));
 
 // Serve static files in the public/ directory
 // app.use(express.static('public'));
@@ -18,12 +22,20 @@ app.get('/', (request, response) => {
   Promise.all([wifi.getConnectedNetwork(), wifi.scan()])
     .then(results => {
       var connected = results[0] || 'DISCONNECTED';
+      var scanResults = results[1];
+/*
       var networkOptions = results[1]
           .filter(n => n !== '')
           .map(n => `<option value="${n}">${n}</option>`)
           .join("\n    ");
+*/
+      response.send(indexPageTemplate({
+        connectionState: connected,
+        networks: scanResults
+      )});
+    });
 
-      response.send(
+/*
 `<h1>Get Your Device Online</h1>
         Wifi Status: ${connected}
 
@@ -38,8 +50,7 @@ app.get('/', (request, response) => {
   <br/>
   <button id="submit">Connect</button>
 </form>`
-      );
-    });
+*/
 });
 
 app.post('/addNetwork', (request, response) => {

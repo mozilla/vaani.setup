@@ -1,3 +1,10 @@
+# These files have secrets in them and should never be checked in
+evernoteConfig.json
+oauthToken.json
+
+# Ignore emacs backup files
+*~
+
 # Logs
 logs
 *.log

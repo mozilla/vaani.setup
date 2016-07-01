@@ -91,10 +91,12 @@ function scan() {
 
       m = l.match(/ESSID:"([^"]*)"/);
       if (m) {
-        networks.push({
-          ssid: m[1],
-          strength: signal
-        });
+        if (m[1] && m[1].trim()) { // Skip if the ssid is an empty string
+          networks.push({
+            ssid: m[1],
+            strength: signal
+          });
+        }
         ssid = undefined;
         signal = undefined;
       }

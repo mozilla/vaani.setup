@@ -1,0 +1,34 @@
+<html>
+  <head>
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1"/>
+    <meta charset="utf-8"/>
+    <style>
+      body { font-size: 20px; }
+      button { font-size: 20px; }
+    </style>
+    <title>Vaani Setup Step 1</title>
+  </head>
+  <body>
+    <h1>Vaani Setup</h1>
+    <h2>Step 1: Wifi</h2>
+    <p>
+      In order for Vaani to work, it must first be able to connect to
+      the internet using your home wifi network. Select your home wifi
+      network then enter your wifi password and click 'Connect'.
+    </p>
+    <form action="/connecting" method="post">
+      Wifi network:<br/>
+      <select name="ssid" size="5">
+        {{#networks}}
+        <option value="{{this}}">{{this}}</option>
+        {{/networks}}
+      </select>
+      <br/>
+      Wifi password:<br/> 
+      <input name="password">
+      <br/>
+      <button id="submit">Connect</button>
+    </form>
+  </body>
+</html>

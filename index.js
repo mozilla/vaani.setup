@@ -6,7 +6,8 @@ var Handlebars = require('handlebars');
 
 var app = express();
 
-var indexPageTemplate = Handlebars.compile(fs.readFileSync('./index.hbs'));
+var indexPageTemplate = Handlebars.compile(fs.readFileSync('./index.hbs', 
+                                                           'utf8'));
 
 // Serve static files in the public/ directory
 // app.use(express.static('public'));
@@ -22,35 +23,12 @@ app.get('/', (request, response) => {
   Promise.all([wifi.getConnectedNetwork(), wifi.scan()])
     .then(results => {
       var connected = results[0] || 'DISCONNECTED';
-      var scanResults = results[1];
-/*
-      var networkOptions = results[1]
-          .filter(n => n !== '')
-          .map(n => `<option value="${n}">${n}</option>`)
-          .join("\n    ");
-*/
+      var scanResults = results[1].filter(n => n !== '');
       response.send(indexPageTemplate({
         connectionState: connected,
         networks: scanResults
-      )});
+      }));
     });
-
-/*
-`<h1>Get Your Device Online</h1>
-        Wifi Status: ${connected}
-
-<form action="addNetwork" method="post">
-  Select your wifi network:<br/>
-  <select name="ssid" size="5">
-    ${networkOptions}
-  </select>
-  <br/>
-  Enter your wifi password:<br/> 
-  <input type="password" name="password">
-  <br/>
-  <button id="submit">Connect</button>
-</form>`
-*/
 });
 
 app.post('/addNetwork', (request, response) => {
@@ -62,7 +40,7 @@ app.post('/addNetwork', (request, response) => {
 
 app.listen(80);
 
-// If we don't have a wifi connect, set up our own access point
+// If we don't have a wifi connection, set up our own access point
 wifi.getStatus().then(status => {
   if (status !== 'COMPLETED') {
     wifi.startAP();

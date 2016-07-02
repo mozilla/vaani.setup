@@ -16,15 +16,23 @@ handles the first-time setup required to get the device working:
 - after re-connecting to their home wifi, the user can reload the
   `vaani.local` page and handle the second part of setup, which is to
   perform OAuth authentication with Evernote to obtain an access
-  token. 
+  token.
 
-The code is Linux-specific and has so far only been tested on a
-Raspberry Pi 3. It also requires hostapd and udhcpd to be installed
-and properly configured. Here are the steps I followed to get my
-Raspberry Pi set up to run this server:
+The code is Linux-specific, depends on systemd, and has so far only
+been tested on a Raspberry Pi 3. It requires hostapd and udhcpd to be
+installed and properly configured. Here are the steps I followed to
+get my Raspberry Pi set up to run this server:
 
+### Step 0
+Clone this repo and download its dependencies from npm
 
-## Step 1
+```
+$ git clone https://github.com/mozilla/vaani.setup.git
+$ cd vaani.setup
+$ npm install
+```
+
+### Step 1
 Install software we need to host an access point, but
 make sure it does not run by default each time we boot
 
@@ -34,7 +42,7 @@ $ sudo apt-get install udhcpd
 $ sudo systemctl disable hostapd
 $ sudo systemctl disable udhcpd
 ```
-## Step 2
+### Step 2
 Next, configure the software:
 
 - Edit /etc/default/hostapd to add the line:
@@ -43,24 +51,35 @@ Next, configure the software:
 DAEMON_CONF="/etc/hostapd/hostapd.conf"
 ```
 
-- Copy `config/hostapd.conf` to `/etc/hostapd/hostapd.conf`
+- Copy `config/hostapd.conf` to `/etc/hostapd/hostapd.conf`.  This
+  config file defines the access point name "VaaniSetup". Edit it if
+  you want to use a different name.
 
 - Edit the file `/etc/default/udhcpd` and comment out the line:
 
 ```
 DHCPD_ENABLED="no"
 ```
-
 - Copy `config/udhcpd.conf` to `/etc/udhcp.conf`
 
-## Step 3
+If you have a keyboard and monitor hooked up to your device, or have a
+serial connection to the device, then you can try out the server at
+this point:
 
-Finally, set up your system to run this server each time it boots up
-Do this by editing `/etc/rc.local` to add this line, editing the path
-as appropriate to refer to the start.sh script in this repo.
+```
+sudo node index.js
+```
+
+### Step 3
+
+If you want to run the server on a device that has no network
+connection and no keyboard or monitor, you probably want to set it up
+to run automatically when the device boots up.  Do this by editing
+`/etc/rc.local` to add a line like this:
 
 ```
 /home/pi/vaani.setup/start.sh &
 ```
 
-See `config/rc.local` for a startup script that work for me.
+Note that you may to use a different path, depending on where you
+cloned the repo. See `config/rc.local` for a startup script that works for me.

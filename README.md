@@ -16,7 +16,8 @@ handles the first-time setup required to get the device working:
 - after re-connecting to their home wifi, the user can reload the
   `vaani.local` page and handle the second part of setup, which is to
   perform OAuth authentication with Evernote to obtain an access
-  token.
+  token. (The server saves the token and related values, such as the
+  expiration date, in a file named `oauthToken.json`.)
 
 The code is Linux-specific, depends on systemd, and has so far only
 been tested on a Raspberry Pi 3. It requires hostapd and udhcpd to be
@@ -81,5 +82,6 @@ to run automatically when the device boots up.  Do this by editing
 /home/pi/vaani.setup/start.sh &
 ```
 
-Note that you may to use a different path, depending on where you
-cloned the repo. See `config/rc.local` for a startup script that works for me.
+Note that you may need to use a different path, depending on where you
+cloned the repo. See `config/rc.local` for a startup script that works
+for me.

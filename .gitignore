@@ -4,6 +4,7 @@ oauthToken.json
 
 # Ignore emacs backup files
 *~
+*#
 
 # Logs
 logs

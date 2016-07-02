@@ -1,27 +1,31 @@
-var wifi = require('./wifi.js');
-var express = require('express');
-var bodyParser = require('body-parser');
-var fs = require('fs');
+var Express = require('express');
 var Handlebars = require('handlebars');
 var Evernote = require('evernote').Evernote;
+var bodyParser = require('body-parser');
+var fs = require('fs');
+var wifi = require('./wifi.js');
+var wait = require('./wait.js');
 var evernoteConfig = require('./evernoteConfig.json');
 
-// Start running the server, then determine whether we need to
-// to start a private AP so the user can connect
+// Start running the server, then, if we don't have a wifi connection after
+// 15 seconds, start a private access point that the user can connect to.
 startServer();
-wifi.getStatus().then(status => {
-  // If we don't have a wifi connection, broadcast our own wifi network.
-  // If we don't do that, no one will be able to connect to the server!
-  console.log('wifi status:', status);
-  if (status !== 'COMPLETED') {
-    wifi.startAP();
-    console.log('Started private wifi network VaaniSetup');
-  }
-})
+
+wait(15000)
+  .then(() => wifi.getStatus())
+  .then(status => {
+    // If we don't have a wifi connection, broadcast our own wifi network.
+    // If we don't do that, no one will be able to connect to the server!
+    console.log('wifi status:', status);
+    if (status !== 'COMPLETED') {
+      wifi.startAP();
+      console.log('Started private wifi network VaaniSetup');
+    }
+  });
 
 function startServer(wifiStatus) {
   // Now start up the express server
-  var server = express();
+  var server = Express();
 
   // When we get POSTs, handle the body like this
   server.use(bodyParser.urlencoded({extended:false}));
@@ -56,7 +60,6 @@ var statusTemplate = getTemplate('./templates/status.hbs');
 // This function handles requests for the root URL '/'.
 // We display a different page depending on what stage of setup we're at
 function handleRoot(request, response) {
-  console.log('handleRoot');
   wifi.getStatus().then(status => {
     console.log("wifi status", status);
 
@@ -102,24 +105,24 @@ function handleConnecting(request, response) {
   var password = request.body.password.trim();
   response.send(connectingTemplate({ssid: ssid}));
 
-  // XXX: another problem. I think I need to wait a bit after sending the
-  // response to be sure it gets through. Now that I'm calling stopAP first
-  // the network went down before I received the response in my browser.
+  // Wait before switching networks to make sure the response gets through.
+  // And also wait to be sure that the access point is fully down before
+  // defining the new network.
+  wait(2000)
+    .then(() => wifi.stopAP())
+    .then(() => wait(2000))
+    .then(() => wifi.defineNetwork(ssid, password));
 
-  // XXX I've got a problem here. This brings up the new network, and
-  // we can connect to the device over local wifi. But the device
-  // still thinks it is 10.0.0.1 instead of using the IP address
-  // assigned by dhcp and somehow that means that it can't get out to
-  // the internet.  (At least when I'm testing from home where
-  // 10.0.0.1 is my router) Rebooting fixes things, but I somehow need
-  // stopAP() to relinquish 10.0.0.1 and get the right address.  XXX
-  // Maybe calling stopAP first before defining the network would
-  // help? No, that doesn't seem to help with the ip address problem
-  wifi.stopAP().then(out => wifi.defineNetwork(ssid, password));
+  // XXX: it would be cool to monitor the network connection and
+  // beep (or blink leds) when the network has switched over and the
+  // user can click the continue button.
+  // Whether or not I should do that, I should at least modify the
+  // template so it has a JS-based countdown that makes the user wait
+  // 20 seconds or something before enabling the continue button.
 }
 
 function handleOauthSetup(request, response) {
-  response.send(oauthSetupTemplate({}));
+  response.send(oauthSetupTemplate());
 }
 
 // We hold our oauth state here. If this was a server that ever had
@@ -186,5 +189,12 @@ function handleOauthCallback(request, response) {
 }
 
 function handleStatus(request, response) {
+  // XXX
+  // I want to expand the status template so that it actually displays
+  // the current wifi and oauth status and displays buttons that take
+  // the user back to the /wifiSetup and /oauthSetup pages. In order to
+  // do that, this function will need to determine the current network
+  // and oauth status (e.g. the expiration date of the token) and pass
+  // those to the template.
   response.send(statusTemplate())
 }

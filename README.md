@@ -20,5 +20,47 @@ handles the first-time setup required to get the device working:
 
 The code is Linux-specific and has so far only been tested on a
 Raspberry Pi 3. It also requires hostapd and udhcpd to be installed
-and properly configured.
+and properly configured. Here are the steps I followed to get my
+Raspberry Pi set up to run this server:
 
+
+## Step 1
+Install software we need to host an access point, but
+make sure it does not run by default each time we boot
+
+```
+$ sudo apt-get install hostapd
+$ sudo apt-get install udhcpd
+$ sudo systemctl disable hostapd
+$ sudo systemctl disable udhcpd
+```
+## Step 2
+Next, configure the software:
+
+- Edit /etc/default/hostapd to add the line:
+
+```
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+```
+
+- Copy `config/hostapd.conf` to `/etc/hostapd/hostapd.conf`
+
+- Edit the file `/etc/default/udhcpd` and comment out the line:
+
+```
+DHCPD_ENABLED="no"
+```
+
+- Copy `config/udhcpd.conf` to `/etc/udhcp.conf`
+
+## Step 3
+
+Finally, set up your system to run this server each time it boots up
+Do this by editing `/etc/rc.local` to add this line, editing the path
+as appropriate to refer to the start.sh script in this repo.
+
+```
+/home/pi/vaani.setup/start.sh &
+```
+
+See `config/rc.local` for a startup script that work for me.

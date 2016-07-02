@@ -156,15 +156,12 @@ function startAP() {
  * this point, the AP should be in the process of stopping but may not
  * yet be completely down.
  *
- * Note that this function does not change the local IP address from 10.0.0.1
- * back to whatever it was before startAP() was called. As far as I can tell
- * this does not actually cause any problems.
- *
  * Note that this function requires root privileges to work
  */
 function stopAP() {
   return run('systemctl stop udhcpd')
-    .then(output => run('systemctl stop hostapd'));
+    .then(output => run('systemctl stop hostapd'))
+    .then(output => run('ifconfig wlan0 0.0.0.0'));
 }
 
 /*

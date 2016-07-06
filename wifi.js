@@ -151,6 +151,7 @@ function startAP() {
  *
  *   systemctl stop udhcpd
  *   systemctl stop hostapd
+ *   ifconfig wlan0 0.0.0.0
  *
  * Returns a promise that resolves when the commands have been run. At
  * this point, the AP should be in the process of stopping but may not

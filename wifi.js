@@ -76,6 +76,10 @@ function getConnectedNetwork() {
  * is the ssid of a wifi network. They are sorted by signal strength from
  * strongest to weakest. On a Raspberry Pi, a scan seems to require root
  * privileges.
+ *
+ * On a Raspberry Pi 3, this function works when the device is in AP mode.
+ * The Intel Edison, however, cannot scan while in AP mode. iwlist fails
+ * with an error and we return an empty list.
  */
 function scan() {
   return run('iwlist wlan0 scan').then(output => {
@@ -107,6 +111,11 @@ function scan() {
 
     // Return just the ssids
     return networks.map(n => n.ssid);
+  })
+  .catch(error => {
+    // If anything goes wrong, log the error and return an empty list
+    console.error(error);
+    return [];
   });
 }
 

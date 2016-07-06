@@ -27,7 +27,9 @@ instructions for Raspberry Pi and Edison, but that I have not yet been
 able to successfully run on Edison
 
 ### Step 0
-On Edison, update your node and npm with commands like these:
+
+On Edison, if you don't already have node 4.4, update your node and
+npm with commands like these:
 
 ```
 # curl https://nodejs.org/dist/v4.4.7/node-v4.4.7-linux-x86.tar.xz | zcat | tar xf - -C /usr/local
@@ -48,6 +50,16 @@ $ cd vaani.setup
 $ npm install
 ```
 
+Finally, on both architectures, you need to create a config file:
+
+```
+$ cd vaani.setup
+$ cp evernoteConfig.json.template evernoteConfig.json
+```
+
+Edit evernoteConfig.json to add your Evernote API "consumer key" and
+"consumer secret" values.
+
 ### Step 1
 Install software we need to host an access point, but
 make sure it does not run by default each time we boot. For Raspberry
@@ -60,9 +72,16 @@ $ sudo systemctl disable hostapd
 $ sudo systemctl disable udhcpd
 ```
 
-On my Edison device, hostapd and udhcpd are already installed (and
-disabled) so these steps are not necessary. Note that on Edison, the
-udhcpd service is named `udhcpd-for-hostapd`.
+On my Edison device, hostapd and udhcpd are already installed and
+disabled (but the udhcpd service is named `udhcpd-for-hostapd`) so
+these steps are not necessary. The Edison may already be running an
+http server on port 80, however, so you may need to run these
+commands:
+
+```
+# systemctl disable edison_config
+# systemctl stop edison_config
+```
 
 ### Step 2
 Next, configure the software:

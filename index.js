@@ -7,6 +7,10 @@ var wifi = require('./wifi.js');
 var wait = require('./wait.js');
 var evernoteConfig = require('./evernoteConfig.json');
 
+// The Edison device can't scan for wifi networks while in AP mode, so
+// we've got to scan before we enter AP mode and save the results
+var preliminaryScanResults;
+
 // Start running the server, then, if we don't have a wifi connection after
 // 15 seconds, start a private access point that the user can connect to.
 startServer();
@@ -18,8 +22,10 @@ wait(15000)
     // If we don't do that, no one will be able to connect to the server!
     console.log('wifi status:', status);
     if (status !== 'COMPLETED') {
-      wifi.startAP();
-      console.log('Started private wifi network VaaniSetup');
+      wifi.scan()
+        .then(ssids => preliminaryScanResults = ssids)
+        .then(() => wifi.startAP())
+        .then(() => console.log('Started private wifi network VaaniSetup', preliminaryScanResults));
     }
   });
 
@@ -96,7 +102,12 @@ function handleRoot(request, response) {
 
 function handleWifiSetup(request, response) {
   wifi.scan().then(results => {
-     response.send(wifiSetupTemplate({ networks: results }));
+    // On Edison, scanning will fail since we're in AP mode at this point
+    // So we'll use the preliminary scan instead
+    if (results.length === 0) {
+      results = preliminaryScanResults;
+    }
+    response.send(wifiSetupTemplate({ networks: results }));
   });
 }
 

@@ -134,32 +134,35 @@ sudo node index.js
 
 If you want to run the server on a device that has no network
 connection and no keyboard or monitor, you probably want to set it up
-to run automatically when the device boots up. The right way to do
-this is with a systemd service. But for now, we'll do it the
-old-fashioned way. On Raspberry Pi, edit
-`/etc/rc.local` to add a line like this:
+to run automatically when the device boots up. To do this, copy
+`config/vaani-setup.service` to `/lib/systemd/system`, edit it, to set
+the correct paths for node and for the server code, and then enable
+the service with systemd:
 
 ```
-/home/pi/vaani.setup/start.sh &
+$ sudo cp config/vaani-setup.service /lib/systemd/system
+$ sudo vi /lib/systemd/system/vaani-setup.service # edit paths as needed
+$ sudo systemctl enable vaani-setup
 ```
 
-Note that you may need to use a different path, depending on where you
-cloned the repo. See `config/rc.local` for a startup script that works
-for me.
-
-On Edison, do something like this:
+At this point, the server will run each time you reboot.  If you want
+to run it manually without rebooting, do this:
 
 ```
-cd /etc/init.d
-touch vaani.sh
-chmod +x vaani.sh
-cat <<EOF > vaani.sh
-#!/bin/sh
-/home/root/vaani.setup/start.sh &
-exit 0
-EOF
+$ sudo systemctl start vaani-setup
 ```
 
-Depending on where you installed Node, you may now need to edit
-`/home/root/vaani.setup/start.sh` to modify `/usr/local/bin/node` to
-the correct path to node
+Any output from the server is sent to the systemd journal, and you can
+review it with:
+
+```
+$ sudo journalctl -u vaani-setup
+```
+
+If you want these journals to persist across reboots (you probably do)
+then you may need to ensure that the `/var/log/journal/` directory
+exists:
+
+```
+$ sudo mkdir /var/log/journal
+```

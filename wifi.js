@@ -4,6 +4,7 @@ exports.scan = scan;
 exports.startAP = startAP;
 exports.stopAP = stopAP;
 exports.defineNetwork = defineNetwork;
+exports.getKnownNetworks = getKnownNetworks;
 
 var child_process = require('child_process');
 
@@ -17,7 +18,7 @@ var child_process = require('child_process');
 function run(cmdline) {
   return new Promise(function(resolve, reject) {
     console.log("Running command:", cmdline);
-    var args = cmdline.split(/\s/);
+    var args = cmdline.split(/\s+/);
     var program = args.shift();
     child_process.execFile(program, args, function(error, stdout, stderr) {
       if (error) {
@@ -212,4 +213,19 @@ function defineNetwork(ssid, password) {
     .then(out => run(enableCmd))
   // Then save the network to the config file so it persists across reboots
     .then(out => run('wpa_cli -iwlan0 save_config'))
+}
+
+function getKnownNetworks() {
+  return run('wpa_cli -iwlan0 list_networks')
+    .then(out => {
+      var lines = out.trim().split('\n');
+      // first line is table headers.
+      lines.shift();
+      // ssid is 2nd tab-delimited field
+      return lines.map(l => l.split('\t')[1] );
+    })
+    .catch(err => {
+      console.error(err);
+      return [];
+    });
 }

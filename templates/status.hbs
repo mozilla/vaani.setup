@@ -15,10 +15,22 @@
       You've connected your device to wifi and have authorized Vaani
       to use your Evernote account, so Vaani is ready to go now.
     </p>
-    <p>
-     <i>(include status info here: what wifi network are we connected
-  to, and when does the autorization expire. Add buttons to add
-  another network and to reauthorize or revoke the oauth)</i>
-    </p>
+    <table>
+      <tr>
+        <th align="right">Wifi connected to:</th>
+        <td>{{ssid}}</td>
+      </tr><tr>
+        <th align="right">Evernote authorized until:</th>
+        <td>{{until}}</td>
+      </tr>
+    </table>
+
+    <button onclick="location='/wifiSetup'">
+      Add another wifi network
+    </button>
+
+    <button onclick="location='/oauthSetup'">
+      Extend or revoke Evernote authorization
+    </button>
   </body>
 </html>

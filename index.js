@@ -7,6 +7,8 @@ var wifi = require('./wifi.js');
 var wait = require('./wait.js');
 var evernoteConfig = require('./evernoteConfig.json');
 
+var OAUTH_TOKEN_FILE = 'oauthToken.json'
+
 // The Edison device can't scan for wifi networks while in AP mode, so
 // we've got to scan before we enter AP mode and save the results
 var preliminaryScanResults;
@@ -78,7 +80,7 @@ function handleRoot(request, response) {
       // Otherwise, look to see if we have an oauth token yet
       var oauthToken
       try {
-        oauthToken = JSON.parse(fs.readFileSync('oauthToken.json', 'utf8'));
+        oauthToken = JSON.parse(fs.readFileSync(OAUTH_TOKEN_FILE, 'utf8'));
       }
       catch(e) {
         oauthToken = null;
@@ -107,6 +109,17 @@ function handleWifiSetup(request, response) {
     if (results.length === 0) {
       results = preliminaryScanResults;
     }
+
+    // XXX
+    // To handle the case where the user entered a bad password and we are
+    // not connected, we should show the networks we know about, and modify
+    // the template to explain that if the user is seeing it, it means
+    // that the network is down or password is bad. This allows the user
+    // to re-enter a network.  Hopefully wpa_supplicatant is smart enough
+    // to do the right thing if there are two entries for the same ssid.
+    // If not, we could modify wifi.defineNetwork() to overwrite rather than
+    // just adding.
+
     response.send(wifiSetupTemplate({ networks: results }));
   });
 }
@@ -114,6 +127,16 @@ function handleWifiSetup(request, response) {
 function handleConnecting(request, response) {
   var ssid = request.body.ssid.trim();
   var password = request.body.password.trim();
+
+  // XXX
+  // We can come back here from the status page if the user defines
+  // more than one network. We always need to call defineNetwork(), but
+  // only need to call stopAP() if we're actually in ap mode.
+  //
+  // Also, if we're not in AP mode, then we should just redirect to
+  // /status instead of sending the connecting template.
+  //
+
   response.send(connectingTemplate({ssid: ssid}));
 
   // Wait before switching networks to make sure the response gets through.
@@ -182,7 +205,7 @@ function handleOauthCallback(request, response) {
       else {
         console.error('Error getting access token:', error);
       }
-      require('fs').writeFileSync('oauthToken.json', '{}');
+      require('fs').writeFileSync(OAUTH_TOKEN_FILE, '{}');
       response.redirect('/');
       return;
     }
@@ -194,7 +217,7 @@ function handleOauthCallback(request, response) {
     });
 
     console.log("got oauth access token:", token);
-    require('fs').writeFileSync('oauthToken.json', token);
+    require('fs').writeFileSync(OAUTH_TOKEN_FILE, token);
     response.redirect('/');
   }
 }
@@ -207,5 +230,20 @@ function handleStatus(request, response) {
   // do that, this function will need to determine the current network
   // and oauth status (e.g. the expiration date of the token) and pass
   // those to the template.
-  response.send(statusTemplate())
+
+  wifi.getConnectedNetwork().then(ssid => {
+
+    var oauthToken = JSON.parse(fs.readFileSync(OAUTH_TOKEN_FILE, 'utf8'));
+    var until = '';
+    if (oauthToken.results && 
+        oauthToken.results.edam_expires &&
+        parseInt(oauthToken.results.edam_expires)) {
+      until = new Date(parseInt(oauthToken.results.edam_expires)).toString();
+    }
+
+    response.send(statusTemplate({
+      ssid: ssid,
+      until: until
+    }));
+  });
 }

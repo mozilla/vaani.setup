@@ -10,6 +10,8 @@ StandardError=journal
 WorkingDirectory=/home/pi/vaani.setup
 # Edit this line, if needed, to set the correct path to node
 ExecStart=/usr/local/bin/node index.js
+Restart=always
+RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target

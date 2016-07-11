@@ -79,45 +79,69 @@ function getConnectedNetwork() {
  * privileges.
  *
  * On a Raspberry Pi 3, this function works when the device is in AP mode.
- * The Intel Edison, however, cannot scan while in AP mode. iwlist fails
- * with an error and we return an empty list.
+ * The Intel Edison, however, cannot scan while in AP mode: iwlist fails
+ * with an error. iwlist sometimes also fails with an error when the
+ * hardware is busy, so we make multiple attempts and give up if they
+ * all fail. When we give up, we just resolve to an empty array
  */
 function scan() {
-  return run('iwlist wlan0 scan').then(output => {
-    var lines = output.split('\n');
-    var networks = [];
-    var ssid, signal;
-    lines.forEach(l => {
-      var m = l.match(/Quality=(\d+)/);
-      if (m) {
-        signal = parseInt(m[1]);
-        return;
-      }
+  return new Promise(function(resolve, reject) {
+    var attempts = 0;
+    var MAX_ATTEMPTS = 5;
 
-      m = l.match(/ESSID:"([^"]*)"/);
-      if (m) {
-        if (m[1] && m[1].trim()) { // Skip if the ssid is an empty string
-          networks.push({
-            ssid: m[1],
-            strength: signal
-          });
+    function tryScan() {
+      attempts++;
+
+      _scan().then(resolve).catch(err => {
+        console.error('Scan attempt', attempts, 'failed:', err.message || err);
+
+        if (attempts >= MAX_ATTEMPTS) {
+          console.error('Giving up. No scan results available.');
+          resolve([]);
+          return;
         }
-        ssid = undefined;
-        signal = undefined;
-      }
-    });
+        else {
+          console.error('Will try again in 3 seconds.');
+          setTimeout(tryScan, 3000);
+        }
+      });
+    }
 
-    // Sort networks based on strength
-    networks.sort((a,b) => b.strength - a.strength);
-
-    // Return just the ssids
-    return networks.map(n => n.ssid);
-  })
-  .catch(error => {
-    // If anything goes wrong, log the error and return an empty list
-    console.error(error);
-    return [];
+    tryScan();
   });
+
+  function _scan() {
+    return run('iwlist wlan0 scan').then(output => {
+      var lines = output.split('\n');
+      var networks = [];
+      var ssid, signal;
+      lines.forEach(l => {
+        var m = l.match(/Quality=(\d+)/);
+        if (m) {
+          signal = parseInt(m[1]);
+          return;
+        }
+
+        m = l.match(/ESSID:"([^"]*)"/);
+        if (m) {
+          if (m[1] && m[1].trim()) { // Skip if the ssid is an empty string
+            networks.push({
+              ssid: m[1],
+              strength: signal
+            });
+          }
+          ssid = undefined;
+          signal = undefined;
+        }
+      });
+
+      // Sort networks based on strength
+      networks.sort((a,b) => b.strength - a.strength);
+
+      // Return just the ssids
+      return networks.map(n => n.ssid);
+    })
+  }
 }
 
 /*

@@ -26,10 +26,35 @@ configure and run this server. Note that the steps include
 instructions for Raspberry Pi and Edison, but that I have not yet been
 able to successfully run on Edison
 
-### Step 0
+### Step 0: clone and install
 
-On Edison, if you don't already have node 4.4, update your node and
-npm with commands like these:
+First, clone this repo and download its dependencies from npm:
+
+```
+$ git clone https://github.com/mozilla/vaani.setup.git
+$ cd vaani.setup
+$ npm install
+```
+
+Next, you need to create a config file:
+
+```
+$ cd vaani.setup
+$ cp evernoteConfig.json.template evernoteConfig.json
+```
+
+Edit evernoteConfig.json to add your Evernote API "consumer key" and
+"consumer secret" values. You need to register your app with Evernote
+to get these.
+
+### Step 1: Edison specific setup
+
+If you're running this software on an Intel Edison instead of a
+Raspberry Pi, you'll probably need to modify the default yocto Linux
+build, as follows:
+
+If you don't already have node 4.4, update your node and npm with
+commands like these:
 
 ```
 # curl https://nodejs.org/dist/v4.4.7/node-v4.4.7-linux-x86.tar.xz | zcat | tar xf - -C /usr/local
@@ -41,26 +66,31 @@ EOF
 v4.4.7
 ```
 
-Next, on Raspberry Pi and Edison, clone this repo and download its
-dependencies from npm.
+If your Edison is running mdnsd, you'll probably need to disable that
+and install avahi instead. These software packages are both supposed
+to do mdns aka zeroconf aka bonjour so that you can refer to your
+device by the name 'hostname.local'. But the mdns package doesn't work
+on my Edison, so I've swapped it out for avahi, which is what
+Raspberry pi uses. Commands like these should work:
 
 ```
-$ git clone https://github.com/mozilla/vaani.setup.git
-$ cd vaani.setup
-$ npm install
+# systemctl disable mdns
+# systemctl stop mdns
+# opkg install avahi
+# reboot
 ```
 
-Finally, on both architectures, you need to create a config file:
+By default, my Edison was already running an HTTP server on port 80,
+so this vaani.setup server was not able to run. I disabled the
+edison_config server like this:
 
 ```
-$ cd vaani.setup
-$ cp evernoteConfig.json.template evernoteConfig.json
+# systemctl disable edison_config
+# systemctl stop edison_config
 ```
 
-Edit evernoteConfig.json to add your Evernote API "consumer key" and
-"consumer secret" values.
+### Step 2: AP mode setup
 
-### Step 1
 Install software we need to host an access point, but
 make sure it does not run by default each time we boot. For Raspberry
 Pi, we need to do:
@@ -74,16 +104,9 @@ $ sudo systemctl disable udhcpd
 
 On my Edison device, hostapd and udhcpd are already installed and
 disabled (but the udhcpd service is named `udhcpd-for-hostapd`) so
-these steps are not necessary. The Edison may already be running an
-http server on port 80, however, so you may need to run these
-commands:
+these steps are not necessary.
 
-```
-# systemctl disable edison_config
-# systemctl stop edison_config
-```
-
-### Step 2
+### Step 3: configuration files
 Next, configure the software:
 
 - On Raspberry Pi, edit /etc/default/hostapd to add the line:
@@ -122,6 +145,9 @@ On Edison, rename `/etc/hostapd/udhcp-for-hostapd.conf` to
 `/etc/hostapd/udhcp-for-hostapd.conf.orig`, and then copy
 `config/udhcpd.conf` to `/etc/hostapd/udhcp-for-hostapd.conf`.
 
+
+### Step 4: run the server
+
 If you have a keyboard and monitor hooked up to your device, or have a
 serial connection to the device, then you can try out the server at
 this point:
@@ -130,12 +156,10 @@ this point:
 sudo node index.js
 ```
 
-### Step 3
-
 If you want to run the server on a device that has no network
 connection and no keyboard or monitor, you probably want to set it up
 to run automatically when the device boots up. To do this, copy
-`config/vaani-setup.service` to `/lib/systemd/system`, edit it, to set
+`config/vaani-setup.service` to `/lib/systemd/system`, edit it to set
 the correct paths for node and for the server code, and then enable
 the service with systemd:
 
@@ -159,8 +183,12 @@ review it with:
 $ sudo journalctl -u vaani-setup
 ```
 
+Add the -b option to the line above if you just want to view output
+from the current boot.  Add -f if you want to watch the output live as
+you interact with the server.
+
 If you want these journals to persist across reboots (you probably do)
-then you may need to ensure that the `/var/log/journal/` directory
+then ensure that the `/var/log/journal/` directory
 exists:
 
 ```

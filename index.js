@@ -24,10 +24,10 @@ wait(15000)
     // If we don't do that, no one will be able to connect to the server!
     console.log('wifi status:', status);
     if (status !== 'COMPLETED') {
-      wifi.scan()
+      wifi.scan(10)   // retry up to 10 times
         .then(ssids => preliminaryScanResults = ssids)
         .then(() => wifi.startAP())
-        .then(() => console.log('Started private wifi network VaaniSetup', preliminaryScanResults));
+        .then(() => console.log('started AP mode'));
     }
   });
 

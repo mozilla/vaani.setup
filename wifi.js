@@ -81,13 +81,14 @@ function getConnectedNetwork() {
  * On a Raspberry Pi 3, this function works when the device is in AP mode.
  * The Intel Edison, however, cannot scan while in AP mode: iwlist fails
  * with an error. iwlist sometimes also fails with an error when the
- * hardware is busy, so we make multiple attempts and give up if they
- * all fail. When we give up, we just resolve to an empty array
+ * hardware is busy, so this function will try multiple times if you 
+ * pass a number. If all attempts fail, the promise is resolved to 
+ * an empty array.
  */
-function scan() {
+function scan(numAttempts) {
+  numAttempts = numAttempts || 1;
   return new Promise(function(resolve, reject) {
     var attempts = 0;
-    var MAX_ATTEMPTS = 5;
 
     function tryScan() {
       attempts++;
@@ -95,7 +96,7 @@ function scan() {
       _scan().then(resolve).catch(err => {
         console.error('Scan attempt', attempts, 'failed:', err.message || err);
 
-        if (attempts >= MAX_ATTEMPTS) {
+        if (attempts >= numAttempts) {
           console.error('Giving up. No scan results available.');
           resolve([]);
           return;

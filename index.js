@@ -49,6 +49,7 @@ function startServer(wifiStatus) {
 
   // And start listening for connections
   // XXX: note that we are HTTP only... is this a security issue?
+  // XXX: for first-time this is on an open access point.
   server.listen(80);
   console.log('HTTP server listening on port 80');
 }
@@ -69,11 +70,9 @@ var statusTemplate = getTemplate('./templates/status.hbs');
 // We display a different page depending on what stage of setup we're at
 function handleRoot(request, response) {
   wifi.getStatus().then(status => {
-    console.log("wifi status", status);
-
     // If we don't have a wifi connection yet, display the wifi setup page
     if (status !== 'COMPLETED') {
-      console.log("redirecting to wifiSetup");
+      console.log("no wifi connection; redirecting to wifiSetup");
       response.redirect('/wifiSetup');
     }
     else {
@@ -86,19 +85,21 @@ function handleRoot(request, response) {
         oauthToken = null;
       }
 
-      console.log(oauthToken);
       if (!oauthToken || !oauthToken.oauthAccessToken) {
-        console.log("oauth setup");
+        console.log("wifi connnected; redirecting to /oauthSetup");
         // if we don't, display the oauth setup page
         response.redirect('/oauthSetup');
       }
       else {
-        console.log("good to go");
+        console.log("wifi and oauth setup complete; redirecting /status");
         // If we get here, then both wifi and oauth are set up, so
         // just display our current status
         response.redirect('/status');
       }
     }
+  })
+  .catch(e => {
+    console.error(e);
   });
 }
 
@@ -115,7 +116,7 @@ function handleWifiSetup(request, response) {
     // not connected, we should show the networks we know about, and modify
     // the template to explain that if the user is seeing it, it means
     // that the network is down or password is bad. This allows the user
-    // to re-enter a network.  Hopefully wpa_supplicatant is smart enough
+    // to re-enter a network.  Hopefully wpa_supplicant is smart enough
     // to do the right thing if there are two entries for the same ssid.
     // If not, we could modify wifi.defineNetwork() to overwrite rather than
     // just adding.
@@ -168,7 +169,6 @@ function handleOauth(request, response) {
   var client = new Evernote.Client(evernoteConfig);
   var callbackURL = request.protocol + "://" + request.headers.host +
       '/oauth_callback';
-  console.log(callbackURL);
   client.getRequestToken(callbackURL, gotRequestToken);
 
   function gotRequestToken(error, oauthToken, oauthTokenSecret, results) {
@@ -182,7 +182,6 @@ function handleOauth(request, response) {
     // Remember the results of this first step
     oauthState.oauthToken = oauthToken;
     oauthState.oauthTokenSecret = oauthTokenSecret;
-    console.log("Got oauth request token", oauthState);
 
     // And now redirect to Evernote to let the user authorize
     response.redirect(client.getAuthorizeUrl(oauthToken));
@@ -216,26 +215,18 @@ function handleOauthCallback(request, response) {
       results: results
     });
 
-    console.log("got oauth access token:", token);
+    console.log("saving oauth access token to", OAUTH_TOKEN_FILE);
     require('fs').writeFileSync(OAUTH_TOKEN_FILE, token);
     response.redirect('/');
   }
 }
 
 function handleStatus(request, response) {
-  // XXX
-  // I want to expand the status template so that it actually displays
-  // the current wifi and oauth status and displays buttons that take
-  // the user back to the /wifiSetup and /oauthSetup pages. In order to
-  // do that, this function will need to determine the current network
-  // and oauth status (e.g. the expiration date of the token) and pass
-  // those to the template.
-
   wifi.getConnectedNetwork().then(ssid => {
 
     var oauthToken = JSON.parse(fs.readFileSync(OAUTH_TOKEN_FILE, 'utf8'));
     var until = '';
-    if (oauthToken.results && 
+    if (oauthToken.results &&
         oauthToken.results.edam_expires &&
         parseInt(oauthToken.results.edam_expires)) {
       until = new Date(parseInt(oauthToken.results.edam_expires)).toString();

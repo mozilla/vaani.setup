@@ -142,10 +142,12 @@ function handleConnecting(request, response) {
 
   // Wait before switching networks to make sure the response gets through.
   // And also wait to be sure that the access point is fully down before
-  // defining the new network.
+  // defining the new network. If I only wait two seconds here, it seems
+  // like the Edison takes a really long time to bring up the new network
+  // but a 5 second wait seems to work better.
   wait(2000)
     .then(() => wifi.stopAP())
-    .then(() => wait(2000))
+    .then(() => wait(5000))
     .then(() => wifi.defineNetwork(ssid, password));
 
   // XXX: it would be cool to monitor the network connection and

@@ -1,5 +1,5 @@
 {
-  "name": "wifi-setup",
+  "name": "vaani.setup",
   "version": "0.0.1",
   "description": "get an IoT device online by first broadcasting a private wifi network that users can connect to to configure your device",
   "main": "index.js",
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/davidflanagan/wifi-setup.git"
+    "url": "git+https://github.com/mozilla/vaani.setup.git"
   },
   "author": "David Flanagan",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/davidflanagan/wifi-setup/issues"
+    "url": "https://github.com/mozilla/vaani.setup/issues"
   },
-  "homepage": "https://github.com/davidflanagan/wifi-setup#readme",
+  "homepage": "https://github.com/mozilla/vaani.setup#readme",
   "dependencies": {
     "body-parser": "^1.15.2",
     "evernote": "^1.25.82",

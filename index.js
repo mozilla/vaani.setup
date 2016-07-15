@@ -3,33 +3,96 @@ var Handlebars = require('handlebars');
 var Evernote = require('evernote').Evernote;
 var bodyParser = require('body-parser');
 var fs = require('fs');
+var cp = require('child_process');
 var wifi = require('./wifi.js');
 var wait = require('./wait.js');
 var evernoteConfig = require('./evernoteConfig.json');
 
+// Our local copy of all the data we get back from the oauth process
 var OAUTH_TOKEN_FILE = 'oauthToken.json'
+// Just the token value itself, saved as an environment variable
+// that is used when the vaani client is launched
+var OAUTH_ENV_FILE = '/lib/systemd/system/vaani.service.d/evernote.conf';
 
 // The Edison device can't scan for wifi networks while in AP mode, so
 // we've got to scan before we enter AP mode and save the results
 var preliminaryScanResults;
 
-// Start running the server, then, if we don't have a wifi connection after
-// 15 seconds, start a private access point that the user can connect to.
+// The parsed contents of the OAUTH_TOKEN_FILE, or null if we have no token
+var oauthToken = readToken();
+
+// Start running the server.
 startServer();
 
-wait(15000)
-  .then(() => wifi.getStatus())
-  .then(status => {
-    // If we don't have a wifi connection, broadcast our own wifi network.
-    // If we don't do that, no one will be able to connect to the server!
-    console.log('wifi status:', status);
-    if (status !== 'COMPLETED') {
-      wifi.scan(10)   // retry up to 10 times
-        .then(ssids => preliminaryScanResults = ssids)
-        .then(() => wifi.startAP())
-        .then(() => console.log('started AP mode'));
+// Wait until we have a working wifi connection. Retry every 3 seconds up
+// to 10 times. If we are connected, then start the Vaani client.
+// If we never get a wifi connection, go into AP mode.
+waitForWifi(10, 3000)
+  .then(() => {
+    if (oauthToken) {
+      startVaani();
+    }
+    else {
+      // XXX If we get here it means we've got a wifi connection but
+      // don't have an oauth token. Somehow we should let the user know
+      // that they need to connect to vaani.local to authorize
+    }
+  })
+  .catch(startAP);
+
+// Return a promise, then check every interval ms for a wifi connection.
+// Resolve the promise when we're connected. Or, if we aren't connected
+// after maxAttempts attempts, then reject the promise
+function waitForWifi(maxAttempts, interval) {
+  return new Promise(function(resolve, reject) {
+    var attempts = 0;
+    check();
+
+    function check() {
+      attempts++;
+      console.log('check', attempts);
+      wifi.getStatus()
+        .then(status => {
+          console.log(status);
+          if (status === 'COMPLETED') {
+            console.log('Wifi connection found');
+            resolve();
+          }
+          else {
+            console.log('No wifi connection on attempt', attempts);
+            retryOrGiveUp()
+          }
+        })
+        .catch(err => {
+          console.error('Error checking wifi on attempt', attempts, ':', err);
+          retryOrGiveUp();
+        });
+    }
+
+    function retryOrGiveUp() {
+      console.log('retryOrGiveUp', attempts)
+      if (attempts >= maxAttempts) {
+        console.error('Giving up. No wifi available.');
+        reject();
+      }
+      else {
+        setTimeout(check, interval);
+      }
     }
   });
+}
+
+function startAP() {
+  // Scan for wifi networks now because we can't always scan once
+  // the AP is being broadcast
+  wifi.scan(10)   // retry up to 10 times
+    .then(ssids => preliminaryScanResults = ssids) // remember the networks
+    .then(() => wifi.startAP())                    // start AP mode
+    .then(() => console.log('No wifi found; entering AP mode'));
+
+  // XXX: Use beeps or voice and/or LEDs to let the user know what to do
+  // now that we're in AP mode.
+}
 
 function startServer(wifiStatus) {
   // Now start up the express server
@@ -77,23 +140,15 @@ function handleRoot(request, response) {
     }
     else {
       // Otherwise, look to see if we have an oauth token yet
-      var oauthToken
-      try {
-        oauthToken = JSON.parse(fs.readFileSync(OAUTH_TOKEN_FILE, 'utf8'));
-      }
-      catch(e) {
-        oauthToken = null;
-      }
-
-      if (!oauthToken || !oauthToken.oauthAccessToken) {
-        console.log("wifi connnected; redirecting to /oauthSetup");
+      if (!oauthToken) {
         // if we don't, display the oauth setup page
+        console.log("wifi connnected; redirecting to /oauthSetup");
         response.redirect('/oauthSetup');
       }
       else {
-        console.log("wifi and oauth setup complete; redirecting /status");
         // If we get here, then both wifi and oauth are set up, so
         // just display our current status
+        console.log("wifi and oauth setup complete; redirecting /status");
         response.redirect('/status');
       }
     }
@@ -206,27 +261,32 @@ function handleOauthCallback(request, response) {
       else {
         console.error('Error getting access token:', error);
       }
-      require('fs').writeFileSync(OAUTH_TOKEN_FILE, '{}');
+      oauthToken = null;
+      saveToken(null);   // Erase any previously saved token.
+      stopVaani();
       response.redirect('/');
       return;
     }
 
-    var token = JSON.stringify({
+    // Store the oauth results in a global variable
+    oauthToken = {
       oauthAccessToken: oauthAccessToken,
       oauthAccessTokenSecret: oauthAccessTokenSecret,
       results: results
-    });
+    };
 
-    console.log("saving oauth access token to", OAUTH_TOKEN_FILE);
-    require('fs').writeFileSync(OAUTH_TOKEN_FILE, token);
+    console.log("saving oauth access token to", OAUTH_ENV_FILE);
+    console.log("saving oauth results to", OAUTH_TOKEN_FILE);
+    saveToken(oauthToken)
+
+    // Start or restart the Vaani client now
+    restartVaani();
     response.redirect('/');
   }
 }
 
 function handleStatus(request, response) {
   wifi.getConnectedNetwork().then(ssid => {
-
-    var oauthToken = JSON.parse(fs.readFileSync(OAUTH_TOKEN_FILE, 'utf8'));
     var until = '';
     if (oauthToken.results &&
         oauthToken.results.edam_expires &&
@@ -238,5 +298,64 @@ function handleStatus(request, response) {
       ssid: ssid,
       until: until
     }));
+  });
+}
+
+function saveToken(token) {
+  // And in the local file
+  fs.writeFileSync(OAUTH_TOKEN_FILE, JSON.stringify(token));
+
+  // And in the environment variable config file for the Vaani client
+  var confFile = `[Service]
+Environment="EVERNOTE_OAUTH_TOKEN=${token.oauthAccessToken || ''}"
+`
+  fs.writeFileSync(OAUTH_ENV_FILE, confFile);
+}
+
+function readToken() {
+  try {
+    var oauthToken = JSON.parse(fs.readFileSync(OAUTH_TOKEN_FILE, 'utf8'));
+    if (oauthToken && oauthToken.oauthAccessToken) {
+      return oauthToken
+    }
+    else {
+      return null;
+    }
+  }
+  catch(e) {
+    return null;
+  }
+}
+
+function startVaani() {
+  cp.execFile('systemctl', ['start', 'vaani'], function(error, stdout, stderr) {
+    if (error) {
+      console.error('Error starting Vaani:', error);
+    }
+    else {
+      console.log('Vaani started', stdout, stderr);
+    }
+  });
+}
+
+function stopVaani() {
+  cp.execFile('systemctl', ['stop', 'vaani'], function(error, stdout, stderr) {
+    if (error) {
+      console.error('Error stopping Vaani:', error);
+    }
+    else {
+      console.log('Vaani stopped', stdout, stderr);
+    }
+  });
+}
+
+function restartVaani() {
+  cp.execFile('systemctl', ['restart', 'vaani'], function(error,stdout,stderr) {
+    if (error) {
+      console.error('Error restarting Vaani:', error);
+    }
+    else {
+      console.log('Vaani re/started', stdout, stderr);
+    }
   });
 }

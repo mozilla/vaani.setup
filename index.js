@@ -1,6 +1,7 @@
 var Express = require('express');
 var Handlebars = require('handlebars');
 var Evernote = require('evernote').Evernote;
+var Wakeword = require('wakeword');
 var bodyParser = require('body-parser');
 var fs = require('fs');
 var cp = require('child_process');
@@ -21,6 +22,11 @@ var preliminaryScanResults;
 // The parsed contents of the OAUTH_TOKEN_FILE, or null if we have no token
 var oauthToken = readToken();
 
+// We'll set this true if we enter AP mode and guide the user through
+// setup with voice
+var talkOnFirstPage = false;
+
+
 // Start running the server.
 startServer();
 
@@ -29,13 +35,15 @@ startServer();
 // If we never get a wifi connection, go into AP mode.
 waitForWifi(10, 3000)
   .then(() => {
+    // XXX: we should check that the token is still valid and prompt
+    // the user to renew it if it is expired or will expire soon
     if (oauthToken) {
       startVaani();
     }
     else {
-      // XXX If we get here it means we've got a wifi connection but
-      // don't have an oauth token. Somehow we should let the user know
-      // that they need to connect to vaani.local to authorize
+      // If we get here it means we've got a wifi connection but
+      // don't have an oauth token. Tell the user to finish setup
+      play('audio/finish.wav');
     }
   })
   .catch(startAP);
@@ -70,7 +78,6 @@ function waitForWifi(maxAttempts, interval) {
     }
 
     function retryOrGiveUp() {
-      console.log('retryOrGiveUp', attempts)
       if (attempts >= maxAttempts) {
         console.error('Giving up. No wifi available.');
         reject();
@@ -83,15 +90,31 @@ function waitForWifi(maxAttempts, interval) {
 }
 
 function startAP() {
+  console.log("startAP");
+  try{
+  // If we can't get on wifi, then discard any existing oauth
+  // credentials we have. If the Vaani box is in a new home then
+  // the user should have to authenticate again.
+  if (oauthToken !== null) {
+    oauthToken = null;
+    saveToken(null);
+  }
+
   // Scan for wifi networks now because we can't always scan once
   // the AP is being broadcast
   wifi.scan(10)   // retry up to 10 times
     .then(ssids => preliminaryScanResults = ssids) // remember the networks
     .then(() => wifi.startAP())                    // start AP mode
-    .then(() => console.log('No wifi found; entering AP mode'));
-
-  // XXX: Use beeps or voice and/or LEDs to let the user know what to do
-  // now that we're in AP mode.
+    .then(() => {
+      console.log('No wifi found; entering AP mode')
+      talkOnFirstPage = true; // continue talking to the user when they connect
+      play('audio/help-me-connect.wav')
+        .then(() => waitForSpeech('okay'))
+        .then(() => play('audio/wifi-settings.wav'))
+        .then(() => waitForSpeech('okay'))
+        .then(() => play('audio/enter-url.wav'))
+    });
+  }catch(e){console.error(e);}
 }
 
 function startServer(wifiStatus) {
@@ -159,6 +182,11 @@ function handleRoot(request, response) {
 }
 
 function handleWifiSetup(request, response) {
+  if (talkOnFirstPage) {
+    talkOnFirstPage = false;
+    play('audio/connected.wav');
+  }
+
   wifi.scan().then(results => {
     // On Edison, scanning will fail since we're in AP mode at this point
     // So we'll use the preliminary scan instead
@@ -203,14 +231,14 @@ function handleConnecting(request, response) {
   wait(2000)
     .then(() => wifi.stopAP())
     .then(() => wait(5000))
-    .then(() => wifi.defineNetwork(ssid, password));
-
-  // XXX: it would be cool to monitor the network connection and
-  // beep (or blink leds) when the network has switched over and the
-  // user can click the continue button.
-  // Whether or not I should do that, I should at least modify the
-  // template so it has a JS-based countdown that makes the user wait
-  // 20 seconds or something before enabling the continue button.
+    .then(() => wifi.defineNetwork(ssid, password))
+    .then(() => waitForWifi(20, 3000))
+    .then(() => {
+      play('audio/continue.wav');
+    })
+    .catch(() => {
+      play('audio/error.wav');
+    });
 }
 
 function handleOauthSetup(request, response) {
@@ -357,5 +385,29 @@ function restartVaani() {
     else {
       console.log('Vaani re/started', stdout, stderr);
     }
+  });
+}
+
+function play(filename) {
+  return new Promise(function(resolve, reject) {
+    cp.exec('play ' + filename, function(error, stdout, stderr) {
+      if (error) {
+        reject(error);
+      }
+      else {
+        resolve();
+      }
+    });
+  });
+}
+
+function waitForSpeech(word) {
+  return new Promise(function(resolve, reject) {
+    Wakeword.listen([word], 0.85, function(data, word) {
+      Wakeword.stop();
+      resolve();
+    }, function onready() {
+      /* For now, assume PS will be ready before the user is */
+    });
   });
 }

@@ -91,7 +91,7 @@ function waitForWifi(maxAttempts, interval) {
 
 function startAP() {
   console.log("startAP");
-  try{
+
   // If we can't get on wifi, then discard any existing oauth
   // credentials we have. If the Vaani box is in a new home then
   // the user should have to authenticate again.
@@ -114,7 +114,6 @@ function startAP() {
         .then(() => waitForSpeech('okay'))
         .then(() => play('audio/enter-url.wav'))
     });
-  }catch(e){console.error(e);}
 }
 
 function startServer(wifiStatus) {

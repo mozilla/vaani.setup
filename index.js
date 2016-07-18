@@ -334,7 +334,7 @@ function saveToken(token) {
 
   // And in the environment variable config file for the Vaani client
   var confFile = `[Service]
-Environment="EVERNOTE_OAUTH_TOKEN=${token.oauthAccessToken || ''}"
+Environment="EVERNOTE_OAUTH_TOKEN=${(token && token.oauthAccessToken) || ''}"
 `
   fs.writeFileSync(OAUTH_ENV_FILE, confFile);
 }

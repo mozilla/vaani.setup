@@ -141,9 +141,9 @@ changing `192.168.42.1` to `10.0.0.1`. This is necessary because
 address when we're broadcasting an access point.
 
 - On Raspberry Pi, copy `config/udhcpd.conf` to `/etc/udhcp.conf`.
-On Edison, rename `/etc/hostapd/udhcp-for-hostapd.conf` to
-`/etc/hostapd/udhcp-for-hostapd.conf.orig`, and then copy
-`config/udhcpd.conf` to `/etc/hostapd/udhcp-for-hostapd.conf`.
+On Edison, rename `/etc/hostapd/udhcpd-for-hostapd.conf` to
+`/etc/hostapd/udhcpd-for-hostapd.conf.orig`, and then copy
+`config/udhcpd.conf` to `/etc/hostapd/udhcpd-for-hostapd.conf`.
 
 
 ### Step 4: run the server

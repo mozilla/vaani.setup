@@ -1,9 +1,5 @@
-var child_process = require('child_process');
-
-// Are we running on Yocto (an Edison device, we presume) or something else?
-var isYocto = child_process
-    .execFileSync('uname', ['-r'], { encoding:'utf8' })
-    .includes('yocto');
+var run = require('./run.js');
+var platform = require('./platform.js');
 
 exports.getStatus = getStatus;
 exports.getConnectedNetwork = getConnectedNetwork;
@@ -12,91 +8,6 @@ exports.startAP = startAP;
 exports.stopAP = stopAP;
 exports.defineNetwork = defineNetwork;
 exports.getKnownNetworks = getKnownNetworks;
-
-// These are the shell commands that provide the network querying and
-// modification primitives used by this module. We export this commands
-// object so that these default commands can be modified for other
-// systems where the defaults do not work
-
-var commands = exports.commands = {
-  // A shell command that outputs the string "COMPLETED" if we are
-  // connected to a wifi network and outputs something else otherwise
-  getStatus:
-    "wpa_cli -iwlan0 status | sed -n -e '/^wpa_state=/{s/wpa_state=//;p;q}'",
-
-  // A shell command that outputs the SSID of the current wifi network
-  // or outputs nothing if we are not connected to wifi
-  getConnectedNetwork:
-    "wpa_cli -iwlan0 status | sed -n -e '/^ssid=/{s/ssid=//;p;q}'",
-
-  // A shell command that scans for wifi networks and outputs the ssids in
-  // order from best signal to worst signal, omitting hidden networks
-  scan: `iwlist wlan0 scan |\
-sed -n -e '
-  /Quality=/,/ESSID:/H
-  /ESSID:/{
-    g
-    s/^.*Quality=\\([0-9]\\+\\).*ESSID:"\\([^"]*\\)".*$/\\1\t\\2/
-    p
-    s/.*//
-    x
-  }' |\
-sort -nr |\
-cut -f 2 |\
-sed -e '/^$/d;/\\x00/d'`,
-
-  // A shell command that lists the names of known wifi networks, one
-  // to a line.
-  getKnownNetworks: "wpa_cli -iwlan0 list_networks | sed -e '1d' | cut -f 2",
-
-  // Start broadcasting an access point.
-  // The name of the AP is defined in a config file elsewhere
-  // Note that we use different commands on Yocto systems than
-  // we do on Raspbian systems
-  startAP: isYocto
-    ? 'systemctl start hostapd'
-    : 'ifconfig wlan0 10.0.0.1 && systemctl start hostapd && systemctl start udhcpd',
-
-  // Stop broadcasting an AP and attempt to reconnect to local wifi
-  stopAP: isYocto
-    //? 'systemctl stop hostapd && systemctl restart wpa_supplicant'
-    ? 'systemctl stop hostapd'
-    : 'systemctl stop udhcpd && systemctl stop hostapd && ifconfig wlan0 0.0.0.0',
-
-  // Define a new wifi network. Expects the network name and password
-  // in the environment variables SSID and PSK.
-  defineNetwork: 'ID=`wpa_cli -iwlan0 add_network` && wpa_cli -iwlan0 set_network $ID ssid \\"$SSID\\" && wpa_cli -iwlan0 set_network $ID psk \\"$PSK\\" && wpa_cli -iwlan0 enable_network $ID && wpa_cli -iwlan0 save_config',
-
-  // Define a new open wifi network. Expects the network name
-  // in the environment variable SSID.
-  defineOpenNetwork: 'ID=`wpa_cli -iwlan0 add_network` && wpa_cli -iwlan0 set_network $ID ssid \\"$SSID\\" && wpa_cli -iwlan0 set_network $ID key_mgmt NONE && wpa_cli -iwlan0 enable_network $ID && wpa_cli -iwlan0 save_config',
-}
-
-// A Promise-based version of child_process.exec(). It rejects the
-// promise if there is an error or if there is any output to stderr.
-// Otherwise it resolves the promise to the text that was printed to
-// stdout (with any leading and trailing whitespace removed).
-function exec(command, environment) {
-  return new Promise(function(resolve, reject) {
-    console.log("Running command:", command);
-    var options = {};
-    if (environment) {
-      options.env = environment;
-    }
-    child_process.exec(command, options, function(error, stdout, stderr) {
-      if (error) {
-        reject(error);
-      }
-      else if (stderr && stderr.length > 0) {
-        reject(new Error(command + ' output to stderr: ' + stderr));
-      }
-      else {
-        resolve(stdout.trim())
-      }
-    });
-  });
-}
-
 
 /*
  * Determine whether we have a wifi connection with the `wpa_cli
@@ -107,7 +18,7 @@ function exec(command, environment) {
  * a connection is being established
  */
 function getStatus() {
-  return exec(commands.getStatus);
+  return run(platform.getStatus);
 }
 
 /*
@@ -116,7 +27,7 @@ function getStatus() {
  * The string will be empty if not connected.
  */
 function getConnectedNetwork() {
-  return exec(commands.getConnectedNetwork);
+  return run(platform.getConnectedNetwork);
 }
 
 /*
@@ -162,7 +73,7 @@ function scan(numAttempts) {
   });
 
   function _scan() {
-    return exec(commands.scan)
+    return run(platform.scan)
   }
 }
 
@@ -192,7 +103,7 @@ function scan(numAttempts) {
  * to the network.
  */
 function startAP() {
-  return exec(commands.startAP);
+  return run(platform.startAP);
 }
 
 /*
@@ -204,7 +115,7 @@ function startAP() {
  * yet be completely down.
  */
 function stopAP() {
-  return exec(commands.stopAP);
+  return run(platform.stopAP);
 }
 
 /*
@@ -217,7 +128,7 @@ function stopAP() {
  * command with a valid ssid and password should cause it to connect.
  */
 function defineNetwork(ssid, password) {
-  return exec(password ? commands.defineNetwork : commands.defineOpenNetwork, {
+  return run(password ? platform.defineNetwork : platform.defineOpenNetwork, {
     SSID: ssid,
     PSK: password
   });
@@ -227,6 +138,6 @@ function defineNetwork(ssid, password) {
  * Return a Promise that resolves to an array of known wifi network names
  */
 function getKnownNetworks() {
-  return exec(commands.getKnownNetworks)
+  return run(platform.getKnownNetworks)
     .then(out => out.length ? out.split('\n') : []);
 }

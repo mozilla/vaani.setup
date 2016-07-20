@@ -4,7 +4,8 @@ var Evernote = require('evernote').Evernote;
 var Wakeword = require('wakeword');
 var bodyParser = require('body-parser');
 var fs = require('fs');
-var cp = require('child_process');
+var run = require('./run.js');
+var platform = require('./platform.js');
 var wifi = require('./wifi.js');
 var wait = require('./wait.js');
 var evernoteConfig = require('./evernoteConfig.json');
@@ -25,6 +26,11 @@ var oauthToken = readToken();
 // We'll set this true if we enter AP mode and guide the user through
 // setup with voice
 var talkOnFirstPage = false;
+
+// Configure the microphone, if necessary
+if (platform.microphoneDevice) {
+  wakeword.deviceName = platform.microphoneDevice
+}
 
 
 // Start running the server.
@@ -355,39 +361,28 @@ function readToken() {
 }
 
 function startVaani() {
-  cp.execFile('systemctl', ['start', 'vaani'], function(error, stdout, stderr) {
-    if (error) {
-      console.error('Error starting Vaani:', error);
-    }
-    else {
-      console.log('Vaani started', stdout, stderr);
-    }
-  });
+  return run(platform.startVaani)
+    .then((out) => console.log('Vaani started', out))
+    .catch((err) => console.error('Error starting Vaani:', err));
 }
 
 function stopVaani() {
-  cp.execFile('systemctl', ['stop', 'vaani'], function(error, stdout, stderr) {
-    if (error) {
-      console.error('Error stopping Vaani:', error);
-    }
-    else {
-      console.log('Vaani stopped', stdout, stderr);
-    }
-  });
+  return run(platform.stopVaani)
+    .then((out) => console.log('Vaani started', out))
+    .catch((err) => console.error('Error starting Vaani:', err));
 }
 
 function restartVaani() {
-  cp.execFile('systemctl', ['restart', 'vaani'], function(error,stdout,stderr) {
-    if (error) {
-      console.error('Error restarting Vaani:', error);
-    }
-    else {
-      console.log('Vaani re/started', stdout, stderr);
-    }
-  });
+  return run(platform.restartVaani)
+    .then((out) => console.log('Vaani started', out))
+    .catch((err) => console.error('Error starting Vaani:', err));
 }
 
 function play(filename) {
+  return run(platform.playAudio, { AUDIO: filename });
+}
+
+/*
   return new Promise(function(resolve, reject) {
     cp.exec('play ' + filename, function(error, stdout, stderr) {
       if (error) {
@@ -399,6 +394,7 @@ function play(filename) {
     });
   });
 }
+*/
 
 function waitForSpeech(word) {
   return new Promise(function(resolve, reject) {

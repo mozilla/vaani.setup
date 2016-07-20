@@ -21,6 +21,6 @@
     "evernote": "^1.25.82",
     "express": "^4.14.0",
     "handlebars": "^4.0.5",
-    "wakeword": "https://gitlab.com/andrenatal/wakeword"
+    "wakeword": "https://github.com/andrenatal/wakeword"
   }
 }

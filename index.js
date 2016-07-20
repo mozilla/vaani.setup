@@ -382,20 +382,6 @@ function play(filename) {
   return run(platform.playAudio, { AUDIO: filename });
 }
 
-/*
-  return new Promise(function(resolve, reject) {
-    cp.exec('play ' + filename, function(error, stdout, stderr) {
-      if (error) {
-        reject(error);
-      }
-      else {
-        resolve();
-      }
-    });
-  });
-}
-*/
-
 function waitForSpeech(word) {
   return new Promise(function(resolve, reject) {
     Wakeword.listen([word], 0.85, function(data, word) {

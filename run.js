@@ -15,9 +15,11 @@ function run(command, environment) {
     }
     child_process.exec(command, options, function(error, stdout, stderr) {
       if (error) {
+        console.log("Error running command:", error)
         reject(error);
       }
       else if (stderr && stderr.length > 0) {
+        console.log("Command wrote to stderr, assuming failure:", stderr)
         reject(new Error(command + ' output to stderr: ' + stderr));
       }
       else {

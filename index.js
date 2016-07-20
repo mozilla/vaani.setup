@@ -29,7 +29,7 @@ var talkOnFirstPage = false;
 
 // Configure the microphone, if necessary
 if (platform.microphoneDevice) {
-  wakeword.deviceName = platform.microphoneDevice
+  Wakeword.deviceName = platform.microphoneDevice
 }
 
 

@@ -145,8 +145,32 @@ On Edison, rename `/etc/hostapd/udhcpd-for-hostapd.conf` to
 `/etc/hostapd/udhcpd-for-hostapd.conf.orig`, and then copy
 `config/udhcpd.conf` to `/etc/hostapd/udhcpd-for-hostapd.conf`.
 
+### Step 4: set up the other Vaani services
 
-### Step 4: run the server
+Once the vaani.setup server has connected to wifi and has gotten an
+oauth token, it will start an auto-update service. That auto-update
+service will start the Vaani client software. In order for this all to
+work, you need to have both of these pieces of software installed:
+
+```
+$ git clone https://github.com/andrenatal/git-auto-updater.git
+$ git clone git@github.com:mozilla/vaani.client.git
+```
+
+You'll need to create appropriate systemd .service files for both of
+these and put them in `/lib/systemd/system/vaani.service` and
+`/lib/systemd/system/git-auto-updater.service`.
+
+Importantly, this vaani.setup service stores the OAUTH token in
+an environment variable in
+`/lib/systemd/system/vaani.service.d/evernote.conf`. In order to do
+this, you need to ensure that the directory exists:
+
+```
+$ sudo mkdir /lib/systemd/system/vaani.service.d
+```
+
+### Step 5: run the server
 
 If you have a keyboard and monitor hooked up to your device, or have a
 serial connection to the device, then you can try out the server at

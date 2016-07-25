@@ -32,6 +32,10 @@ if (platform.microphoneDevice) {
   Wakeword.deviceName = platform.microphoneDevice
 }
 
+// Turn up the output volume, if necessary
+if (platform.setVolumeLevel) {
+  run(platform.setVolumeLevel)
+}
 
 // Start running the server.
 startServer();

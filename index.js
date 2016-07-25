@@ -367,6 +367,8 @@ function readToken() {
 function startVaani() {
   return run(platform.startVaani)
     .then((out) => console.log('Vaani started', out))
+    .then((out) => wait(5000))
+    .then(() => process.exit(0))
     .catch((err) => console.error('Error starting Vaani:', err));
 }
 
@@ -379,6 +381,8 @@ function stopVaani() {
 function restartVaani() {
   return run(platform.restartVaani)
     .then((out) => console.log('Vaani started', out))
+    .then((out) => wait(5000))
+    .then(() => process.exit(0))
     .catch((err) => console.error('Error starting Vaani:', err));
 }
 

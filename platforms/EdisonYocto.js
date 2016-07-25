@@ -5,7 +5,7 @@ module.exports = {
 
   playAudio: 'aplay -q -D plughw:3,0 $AUDIO',
 
-  setVolumeLevels: 'amixer -q -c 3 set PCM 100%',
+  setVolumeLevel: 'amixer -q -c 3 set PCM 100%',
 
   // The edison is configured so that starting hostapd automatically
   // starts udhcpd and does the ifconfig as well

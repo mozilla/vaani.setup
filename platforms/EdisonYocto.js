@@ -1,9 +1,9 @@
 module.exports = {
   platform: 'edison',
   // On our edison devices, this is how we talk to the microphone
-  microphoneDevice: 'plughw:2,0',
+  microphoneDevice: 'plug:mic',
 
-  playAudio: 'aplay -q -D plughw:3,0 $AUDIO',
+  playAudio: 'aplay -q -D plug:speaker $AUDIO',
 
   setVolumeLevel: 'amixer -q -c 3 set PCM 100%',
 

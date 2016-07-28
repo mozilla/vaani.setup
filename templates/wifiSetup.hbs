@@ -4,8 +4,19 @@
           content="width=device-width, user-scalable=no, initial-scale=1"/>
     <meta charset="utf-8"/>
     <style>
-      body { font-size: 20px; }
-      button { font-size: 20px; }
+      body { font-family: sans-serif; font-size: large; background-color: #4dc}
+      h1 { text-align: center; margin-top:15px; border-bottom:solid black 4px; }
+      p { margin: 5px; }
+      input { font-size:16px; margin: 5px;}
+      select { font-size: 16px; margin: 5px;}
+      button {
+        display:block;
+        margin: 10px auto 0 auto;
+        font-size: large;
+        font-weight: bold;
+        padding:5px;
+        border-radius:5px;
+      }
     </style>
     <title>Vaani Setup Step 1</title>
   </head>
@@ -18,16 +29,14 @@
       network then enter your wifi password and click 'Connect'.
     </p>
     <form action="/connecting" method="post">
-      Wifi network:<br/>
+      <p>Wifi network:</p>
       <select name="ssid" size="5">
         {{#networks}}
         <option value="{{this}}">{{this}}</option>
         {{/networks}}
       </select>
-      <br/>
-      Wifi password:<br/> 
+      <p>Wifi password:</p> 
       <input name="password">
-      <br/>
       <button id="submit">Connect</button>
     </form>
   </body>

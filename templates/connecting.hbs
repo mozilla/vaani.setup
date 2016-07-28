@@ -4,8 +4,17 @@
           content="width=device-width, user-scalable=no, initial-scale=1"/>
     <meta charset="utf-8"/>
     <style>
-      body { font-size: 20px; }
-      button { font-size: 20px; }
+      body { font-family: sans-serif; font-size: large; background-color: #4dc}
+      h1 { text-align: center; margin-top:15px; border-bottom:solid black 4px; }
+      p { margin: 10px; }
+      button {
+        display:block;
+        margin: 10px auto 0 auto;
+        font-size: large;
+        font-weight: bold;
+        padding:5px;
+        border-radius:5px;
+      }
     </style>
     <title>Connecting</title>
   </head>
@@ -15,10 +24,12 @@
       Vaani is now connecting to the {{ssid}} wifi network.
       Disconnect your phone or computer from the VaaniSetup
       network and reconnect it to your home wifi.
-    </p></p>
+    </p><p>
       When Vaani prompts you, click the
       button below to continue with setup.
     </p>
-    <button onclick="window.location = '/';">Continue</button>
+    <button onclick="window.location = window.location.protocol + '//' + window.location.host + '/';">
+      Continue
+    </button>
   </body>
 </html>

@@ -37,13 +37,12 @@ if (platform.setVolumeLevel) {
   run(platform.setVolumeLevel)
 }
 
-// Start running the server.
-startServer();
-
 // Wait until we have a working wifi connection. Retry every 3 seconds up
 // to 10 times. If we are connected, then start the Vaani client.
 // If we never get a wifi connection, go into AP mode.
-waitForWifi(20, 3000)
+// Before we start, though, let the user know that something is happening
+play('audio/starting.wav')
+  .then(() => waitForWifi(20, 3000))
   .then(() => {
     // XXX: we should check that the token is still valid and prompt
     // the user to renew it if it is expired or will expire soon
@@ -57,6 +56,9 @@ waitForWifi(20, 3000)
     }
   })
   .catch(startAP);
+
+// Meanwhile, start running the server.
+startServer();
 
 // Return a promise, then check every interval ms for a wifi connection.
 // Resolve the promise when we're connected. Or, if we aren't connected

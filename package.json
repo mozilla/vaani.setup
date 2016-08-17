@@ -2,6 +2,9 @@
   "name": "vaani.setup",
   "version": "0.0.1",
   "description": "get an IoT device online by first broadcasting a private wifi network that users can connect to to configure your device",
+  "bin": {
+    "vaani.setup": "./bin/vaani.setup"
+  },
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

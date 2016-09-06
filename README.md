@@ -140,7 +140,7 @@ changing `192.168.42.1` to `10.0.0.1`. This is necessary because
 `config/udhcpd.conf` and `wifi.js` use 10.0.0.1 as the local IP
 address when we're broadcasting an access point.
 
-- On Raspberry Pi, copy `config/udhcpd.conf` to `/etc/udhcp.conf`.
+- On Raspberry Pi, copy `config/udhcpd.conf` to `/etc/udhcpd.conf`.
 On Edison, rename `/etc/hostapd/udhcpd-for-hostapd.conf` to
 `/etc/hostapd/udhcpd-for-hostapd.conf.orig`, and then copy
 `config/udhcpd.conf` to `/etc/hostapd/udhcpd-for-hostapd.conf`.

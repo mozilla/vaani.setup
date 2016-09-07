@@ -18,7 +18,8 @@ function run(command, environment) {
         console.log("Error running command:", error)
         reject(error);
       }
-      else if (stderr && stderr.length > 0) {
+      else if (stderr && stderr.length > 0 &&
+               !stderr.startsWith('Calling manager for ')) {
         console.log("Command wrote to stderr, assuming failure:", stderr)
         reject(new Error(command + ' output to stderr: ' + stderr));
       }
